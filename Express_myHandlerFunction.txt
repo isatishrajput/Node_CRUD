@@ -1,0 +1,16 @@
+const http = require("http")
+const express = require("express")
+
+const app = express();
+
+app.get('/',(req,res) =>{
+    res.send("Hello from Home page " + "Hey " + req.query.name + " Your age is " + req.query.age)
+})
+
+app.get('/about', (req,res) =>{
+    res.send("Hello from About page")
+})
+
+const myServer = http.createServer(app)
+
+myServer.listen(8000, () => {console.log("Server Started")})

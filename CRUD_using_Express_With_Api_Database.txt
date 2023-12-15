@@ -1,0 +1,90 @@
+const express = require('express')
+const fs = require('fs')
+const users = require('./MOCK_DATA.json')
+
+const PORT = 8000;
+const app = express();
+
+
+//Middleware Plugin
+app.use(express.urlencoded({ extended: false}))
+
+app.use( (req,res, next) =>{
+    console.log("Hello from middleware 1")
+    next();
+})
+
+app.use((req,res,next)=>{
+    console.log("Hello Message from middleware2")
+    fs.appendFile('log.txt', `${Date.now()} : ${req.method} : ${req.path}\n`, (err,data) =>{
+        next();
+    })
+})
+
+
+//Html documnet
+app.get('/users', (req,res) =>{
+    const html = `
+    <ul>
+        ${users.map(user =>`<li>${user.first_name}</li>`).join("")}
+    </ul>
+    `
+    return res.send(html)
+})
+
+//Rest Api 
+app.get('/api/users', (req,res) =>{
+    res.setHeader("X-myName","Satish Rajput"); // CUSTOM HAADER
+    return res.json(users)
+})
+
+app.route('/api/users/:id').get((req,res) =>{
+    const id = Number(req.params.id)
+    const user = users.find( user => user.id === id);
+    if(!user){ return res.status(404).json({error: "Request Not Found!!"})}
+    res.json(user)
+})
+.patch( (req,res) =>{
+
+    const updtedData = req.body
+
+    const updateId  = users.findIndex(user => user.id === Number(req.params.id))
+
+    users[updateId] = { ...users[updateId], ...updtedData }
+
+    fs.writeFile('./MOCK_DATA.json',JSON.stringify(users), (err,data) =>{
+        if(err){
+            console.log(err)
+        }else{
+            res.json({status: "Updation Successfull",updatedUser: users[updateId]})
+        } 
+    })
+})
+.delete((req,res) => {
+
+    const userIndex = users.findIndex(user => user.first_name === req.params.id);
+
+    const deleteIndex = users.splice(userIndex, 1)[0];
+    fs.writeFile('./MOCK_DATA.json',JSON.stringify(users), (err,data) =>{
+        if(err){
+            console.log(err)
+        }else{
+            res.json({status: "Deletion Successfull", deleteIndex})
+        }
+    })
+})
+
+app.post("/api/users",(req,res) => {
+    const body = req.body
+    if(!body || !body.first_name || !body.last_name || !body.email || !body.gender || !body.job_title){
+        res.status(400).json({msg : "All fields are req..."})
+    }
+    users.push({ ...body, id:users.length + 1});
+    fs.writeFile('./MOCK_DATA.json', JSON.stringify(users), (err,data) => {
+         res.status(201).json({status: "Success" ,  id:users.length})
+    })
+})
+
+
+
+app.listen(PORT, () => console.log(`Server Started at PORT: ${PORT}`))
